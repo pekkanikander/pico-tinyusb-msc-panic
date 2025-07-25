@@ -25,6 +25,9 @@ endif()
 # ====================================================================================
 set(PICO_BOARD pico2_w CACHE STRING "Board type")
 
+# Tell Pico SDK to use the local copy of tinyusb
+set(PICO_TINYUSB_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/tinyusb")
+
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
@@ -59,6 +62,8 @@ target_include_directories(pico-tinyusb-msc-panic PRIVATE
 # Add any user requested libraries
 target_link_libraries(pico-tinyusb-msc-panic
         pico_cyw43_arch_none
+        tinyusb_device
+        tinyusb_board
         )
 
 pico_add_extra_outputs(pico-tinyusb-msc-panic)
