@@ -38,7 +38,11 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(pico-tinyusb-msc-panic pico-tinyusb-msc-panic.c )
+add_executable(pico-tinyusb-msc-panic
+    pico-tinyusb-msc-panic.c
+    usb_descriptors.c
+    usb_msc_cb.c
+)
 
 pico_set_program_name(pico-tinyusb-msc-panic "pico-tinyusb-msc-panic")
 pico_set_program_version(pico-tinyusb-msc-panic "0.1")
@@ -50,9 +54,22 @@ pico_set_binary_type(pico-tinyusb-msc-panic no_flash)
 pico_enable_stdio_uart(pico-tinyusb-msc-panic 0)
 pico_enable_stdio_usb(pico-tinyusb-msc-panic 1)
 
+# Include RP2350 picotool vendor interface
+target_compile_definitions(pico-tinyusb-msc-panic
+  PRIVATE
+    PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1
+    PICO_STDIO_USB_RESET_INTERFACE_SUPPORT_RESET_TO_BOOTSEL=1
+    PICO_STDIO_USB_RESET_INTERFACE_SUPPORT_RESET_BY_VENDOR_CMD=1
+    PICO_STDIO_USB_RESET_BOOTSEL_INTERFACE_DISABLE_MASK=0 # XXX HACK FIXME
+)
+target_sources(pico-tinyusb-msc-panic PRIVATE
+    ${PICO_SDK_PATH}/src/rp2_common/pico_stdio_usb/reset_interface.c
+)
 # Add the standard library to the build
 target_link_libraries(pico-tinyusb-msc-panic
-        pico_stdlib)
+        pico_stdlib
+        pico_stdio_usb
+)
 
 # Add the standard include files to the build
 target_include_directories(pico-tinyusb-msc-panic PRIVATE
