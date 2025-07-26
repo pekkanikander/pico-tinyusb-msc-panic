@@ -35,6 +35,9 @@ attempts to start a new USB transfer on an endpoint.
    cp pico-tinyusb-msc-panic.uf2 /Volumes/RP2350/
    ```
 
+Note that the firmware runs by default from SRAM and does not get flashed.
+Hence, you must copy it to your Pico every time you want to reproduce the bug.
+
 ### Reproducing the Bug
 
 **Method 1: Automatic (Recommended)**
@@ -229,7 +232,7 @@ while (true) {
 ## Related Issues
 
 This bug has been reported in the TinyUSB repository:
-- [Issue #XXXX: RP2040 MSC endpoint double-arming panic](https://github.com/hathach/tinyusb/issues/XXXX)
+- [Issue #3188: Returning partial MSC READM10 data reliably triggers an RP2040 port panic](https://github.com/hathach/tinyusb/issues/3188)
 
 ## Contributing
 
