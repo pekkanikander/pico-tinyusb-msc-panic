@@ -79,4 +79,13 @@ bool tud_msc_is_writable_cb(uint8_t lun __unused) {
     return false;
 }
 
+// Generic SCSI command handler - return -1 for unsupported commands
+int32_t tud_msc_scsi_cb(uint8_t lun __unused,
+                        uint8_t const scsi_cmd[16] __unused,
+                        void* buffer __unused,
+                        uint16_t bufsize __unused)
+{
+    return -1;  // Command not supported
+}
+
 #endif // CFG_TUD_MSC

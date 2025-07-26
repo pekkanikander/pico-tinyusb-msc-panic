@@ -1,57 +1,69 @@
+#!/usr/bin/env python3
+"""
+Minimal host script to trigger TinyUSB RP2040 MSC endpoint double-arming bug
+"""
 import os
 import sys
-import plistlib
 import subprocess
-import struct
+import time
 
-def find_msc_disk():
+def find_msc_device():
+    """Find the first external USB MSC device"""
     if sys.platform == "darwin":
-        proc = subprocess.run(
-            ["diskutil", "list", "-plist", "external", "physical"],
-            check=True, stdout=subprocess.PIPE
-        )
-        doc = plistlib.loads(proc.stdout)
-        whole = doc.get("WholeDisks", [])
-        if not whole:
-            raise IOError("No external physical disks found")
-        disk_id = whole[0]
-        device = f"/dev/rdisk{disk_id.lstrip('disk')}"
-    elif sys.platform.startswith("linux"):
-        proc = subprocess.run(
-            ["lsblk", "-o", "NAME,TRAN"],
-            check=True, stdout=subprocess.PIPE, text=True
-        )
-        lines = proc.stdout.strip().split('\n')[1:]
-        for line in lines:
-            parts = line.split()
-            if len(parts) != 2:
-                continue
-            name, tran = parts
-            if tran == "usb":
-                device = f"/dev/{name}"
-                break
-        else:
-            raise IOError("No USB disks found")
-    else:
-        raise NotImplementedError("This function only supports macOS and Linux")
-    if not os.access(device, os.R_OK):
-        raise PermissionError(f"Device {device} is not readable: permission denied")
-    return device
+        # macOS: use diskutil to find external disks
+        try:
+            result = subprocess.run(['diskutil', 'list'],
+                                  capture_output=True, text=True, check=True)
+            lines = result.stdout.split('\n')
 
-def read_sector(device, lba, sector_size=512):
-    with open(device, "rb") as f:
-        f.seek(lba * sector_size)
-        data = f.read(sector_size)
-        print(f"Read LBA {lba}: {len(data)} bytes")
-        return data
+            for line in lines:
+                if '/dev/disk' in line and 'external' in line.lower():
+                    # Extract disk number
+                    parts = line.split()
+                    for part in parts:
+                        if part.startswith('/dev/disk'):
+                            return part.replace('disk', 'rdisk')
+
+            print("No external USB disk found")
+            return None
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error running diskutil: {e}")
+            return None
+    else:
+        print("This script currently supports macOS only")
+        return None
+
+def trigger_bug(device_path):
+    """Repeatedly read from device to trigger the bug"""
+    print(f"Reading from {device_path} to trigger the bug...")
+    print("The device should panic/crash after a few reads.")
+
+    try:
+        with open(device_path, 'rb') as f:
+            for i in range(100):  # Read 100 sectors
+                f.seek(0)  # Always read from LBA 0
+                data = f.read(512)
+                print(f"Read {len(data)} bytes (iteration {i+1})")
+
+                # Small delay to allow device to process
+                time.sleep(0.01)
+
+    except IOError as e:
+        print(f"Device access failed: {e}")
+        print("This might indicate the bug was triggered (device disconnected)")
+        return True
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return False
+
+    return False
 
 if __name__ == "__main__":
-    device = find_msc_disk()
-    with open(device, "rb") as f:
-        bootsector = f.read(512)
-    cluster_heap_offset = struct.unpack_from('<I', bootsector, 88)[0]
-    print("ClusterHeapOffset LBA:", cluster_heap_offset)
-    with open(device, "rb") as f:
-        f.seek(cluster_heap_offset * 512)
-        data = f.read(512)
-        print(f"Read {len(data)} bytes from LBA {cluster_heap_offset}")
+    device = find_msc_device()
+    if device:
+        print(f"Found device: {device}")
+        trigger_bug(device)
+    else:
+        print("No suitable device found")
+        sys.exit(1)

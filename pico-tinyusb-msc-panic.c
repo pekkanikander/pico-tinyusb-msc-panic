@@ -4,17 +4,6 @@
 #include <pico/stdlib.h>
 #include <pico/cyw43_arch.h>
 
-// TinyUSB callbacks for debugging
-void tud_mount_cb(void) {
-    printf("USB MSC device mounted\n");
-    fflush(stdout);
-}
-
-void tud_umount_cb(void) {
-    printf("USB MSC device unmounted\n");
-    fflush(stdout);
-}
-
 int main()
 {
     // Initialize TinyUSB stack
@@ -27,7 +16,6 @@ int main()
     // Initialize Wi-Fi chip (required for Pico W)
     if (cyw43_arch_init()) {
         printf("Wi-Fi chip init failed.\n");
-        return -1;
     }
 
     // Turn on LED to indicate device is running
@@ -36,8 +24,18 @@ int main()
     printf("Pico TinyUSB MSC Bug Test - Device Ready\n");
     fflush(stdout);
 
+    // Schedule first heartbeat one second from now
+    absolute_time_t next_heartbeat = make_timeout_time_ms(1000);
+
     // Main loop: call tud_task() as fast as possible to trigger the bug
     while (true) {
         tud_task();
+
+        if (time_reached(next_heartbeat)) {
+            printf("heartbeat\n");
+            fflush(stdout);
+            // Schedule next heartbeat one second later
+            next_heartbeat = delayed_by_ms(next_heartbeat, 1000);
+        }
     }
 }
